@@ -14,7 +14,7 @@ public class JanelaUI
     // HABILIDADES: Mostra as habilidades disponíveis para uso.
     // ALVOS: Deixa o jogador escolher qual inimigo vai ser atacado.
     // MENSAGEM: Mostra texto na tela enquanto o jogador não está em controle.
-    private enum Estado
+    public enum EstadoDaJanela
     {
         INICIO,
         HABILIDADES,
@@ -23,7 +23,8 @@ public class JanelaUI
     }
     
     // Variáveis de desenho
-    private Texture sprite;
+    private Texture spriteJanela;
+    private Texture spriteAlvo;
 
     // iconeSelecionado, o ícone que gira no item selecionado
     private char iconeSelecionado;
@@ -37,24 +38,32 @@ public class JanelaUI
     private String textoMensagem;
 
     // Variável de controle do estado da janela
-    private Estado estadoDaJanela;
+    private EstadoDaJanela estadoDaJanela;
     private boolean rodadaTerminou;
 
     // Referência ao objeto do protagonista
     private Protagonista protagonista;
+    private Inimigo[] inimigos;
 
     // Variável usado para a seleção dos items na janela.
     private int indiceSelecao;
+    
+    // Variável para segurar o índice da habilidade selecionada. 
+    // (usado em AtualizarAlvos. protagonista.habilidades[indiceHabilidadeSelecionada].Aplicar();)
+    private int indiceHabilidadeSelecionada;
 
     // Métodos Públicos
-    public JanelaUI(Protagonista protagonistaAtivo)
+    public JanelaUI(Protagonista protagonistaAtivo, Inimigo[] inimigosAtivos)
     {
         protagonista = protagonistaAtivo;
+        inimigos = inimigosAtivos;
 
-        sprite = new Texture("menu.png");
+        spriteJanela = new Texture("menu.png");
+        spriteAlvo   = new Texture("alvo1.png");
 
-        estadoDaJanela = Estado.INICIO;
+        estadoDaJanela = EstadoDaJanela.INICIO;
         rodadaTerminou = false;
+        indiceHabilidadeSelecionada = 0;
         indiceSelecao = 0;
         // Habilidades     = indiceSeleçao de 0
         // Terminar Rodada = indiceSelecao de 1
@@ -95,7 +104,7 @@ public class JanelaUI
     // Desenhar estado da janela
     public void Desenhar(SpriteBatch batch, BitmapFont font)
     {
-        batch.draw(sprite, 0, 0);
+        batch.draw(spriteJanela, 0, 0);
 
         switch (estadoDaJanela)
         {
@@ -106,7 +115,7 @@ public class JanelaUI
                 DesenharHabilidades(batch, font, protagonista.habilidades);
                 break;
             case ALVOS:
-                DesenharAlvos();
+                DesenharAlvos(batch, font);
                 break;
             case MENSAGEM:
                 DesenharMensagem(batch, font);
@@ -116,17 +125,17 @@ public class JanelaUI
 
     // Permite mudar o estado da janela fora da clsse JanelaUI.
     // Deve escrever em uma string com tudo maísculo.
-    public void SetEstadoDaJanela(String estadoAtual)
+    public void SetEstadoDaJanela(EstadoDaJanela estadoAtual)
     {
-        if ("INICIO".equals(estadoAtual))
+        if (estadoAtual == EstadoDaJanela.INICIO)
         {
             rodadaTerminou = false;
             indiceSelecao = 0;
-            estadoDaJanela = Estado.INICIO;
+            estadoDaJanela = EstadoDaJanela.INICIO;
         }
-        else if ("MENSAGEM".equals(estadoAtual))
+        else if (estadoAtual == EstadoDaJanela.MENSAGEM)
         {
-            estadoDaJanela = Estado.MENSAGEM;
+            estadoDaJanela = EstadoDaJanela.MENSAGEM;
         }
         else
         {
@@ -174,7 +183,7 @@ public class JanelaUI
         {
             if (indiceSelecao == 0)
             {
-                estadoDaJanela = Estado.HABILIDADES;
+                estadoDaJanela = EstadoDaJanela.HABILIDADES;
             }
             if (indiceSelecao == 1)
             {
@@ -207,7 +216,52 @@ public class JanelaUI
         }
         if (Gdx.input.isKeyJustPressed(Keys.SPACE) || Gdx.input.isKeyJustPressed(Keys.ENTER))
         {
-            protagonista.habilidades[indiceSelecao].Aplicar(); // DEBUG
+            // Se existirem inimigos vivos, verifique qual é o tipo de alvo da habilidade e processe o resultado.
+            if (Inimigo.inimigosAtivos != 0)
+            {
+                // Se for UNICO, guarde o indice da habilidade selecionada para ela ser aplicada depois.
+                // Se for TODOS, repita a habilidade em todos os alvos ativos.
+                // Se for AUTO, o alvo também é o protagonista.
+                switch (protagonista.habilidades[indiceSelecao].GetTipoDeAlvo())
+                {
+                    case UNICO: 
+                        indiceHabilidadeSelecionada = indiceSelecao;
+                        indiceSelecao = 0;
+                        estadoDaJanela = EstadoDaJanela.ALVOS;
+                        do
+                        {
+                            indiceSelecao = Math.floorMod(indiceSelecao + 1, Inimigo.inimigosAtivos);
+                        } 
+                        while (inimigos[indiceSelecao] == null);
+                        break;
+                    case TODOS: 
+                        for (Inimigo inimigo : inimigos)
+                        {
+                            if (inimigo != null)
+                            {
+                                protagonista.habilidades[indiceSelecao].Aplicar(protagonista, inimigo);
+                            }
+                        }
+                        rodadaTerminou = true;
+                        break;
+                    case AUTO: 
+                        protagonista.habilidades[indiceSelecao].Aplicar(protagonista, protagonista);
+                        rodadaTerminou = true;
+                        break;
+                }
+            }
+            else
+            {
+                if (protagonista.habilidades[indiceSelecao].GetTipoDeAlvo() == Habilidade.TipoDeAlvo.AUTO)
+                {
+                    protagonista.habilidades[indiceSelecao].Aplicar(protagonista, protagonista);
+                }
+                else
+                {
+                    System.out.println("Nenhum alvo válido");
+                    // Mostrar uma mensagem falando que não existem alvos possíveis.
+                }
+            }
         }
     }
 
@@ -219,15 +273,27 @@ public class JanelaUI
         // Isso é usado para criar um loop nos items selecionaveis na janela.
         if (Gdx.input.isKeyJustPressed(Keys.D) || Gdx.input.isKeyJustPressed(Keys.DPAD_RIGHT))
         {
-
+            // Cada índice está associado a um inimigo, já que cada inimigo segure uma variável "indice".
+            // Se o índice atual representar um inimigo que não está vivo, pule para o próximo até achar um que esteje.
+            do
+            {
+                indiceSelecao = Math.floorMod(indiceSelecao + 1, Inimigo.inimigosAtivos);
+            } 
+            while (inimigos[indiceSelecao] == null);
         }
-        if (Gdx.input.isKeyJustPressed(Keys.S) || Gdx.input.isKeyJustPressed(Keys.DPAD_DOWN))
+        if (Gdx.input.isKeyJustPressed(Keys.A) || Gdx.input.isKeyJustPressed(Keys.DPAD_LEFT))
         {
-
+            // Cada índice está associado a um inimigo, já que cada inimigo segure uma variável "indice".
+            // Se o índice atual representar um inimigo que não está vivo, pule para o próximo até achar um que esteje.
+            do
+            {
+                indiceSelecao = Math.floorMod(indiceSelecao - 1, Inimigo.inimigosAtivos);
+            } 
+            while (inimigos[indiceSelecao] == null);
         }
         if (Gdx.input.isKeyJustPressed(Keys.SPACE) || Gdx.input.isKeyJustPressed(Keys.ENTER))
         {
-
+            protagonista.habilidades[indiceHabilidadeSelecionada].Aplicar(protagonista, inimigos[indiceSelecao]);
         }
     }
 
@@ -282,9 +348,12 @@ public class JanelaUI
     }
 
     // Desenhar estado em ALVOS
-    private void DesenharAlvos()
+    private void DesenharAlvos(SpriteBatch batch, BitmapFont font)
     {
+        font.setColor(com.badlogic.gdx.graphics.Color.BLACK);
+        font.draw(batch, "Vida: " + inimigos[indiceSelecao].vidaAtual + " / " + inimigos[indiceSelecao].vidaMax,70, 220);
 
+        batch.draw(spriteAlvo, inimigos[indiceSelecao].GetPosX(), inimigos[indiceSelecao].GetPosY());
     }
 
     // Desenhar estado em MENSAGEM

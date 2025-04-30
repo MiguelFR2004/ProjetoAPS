@@ -29,7 +29,7 @@ public class SistemaJogo
 
 	// Enumerador para controlar o estado do jogo. (Máquina de estados finita)
 	// Cada estado chama uma função que controla o comportamento do jogo.
-	private enum Estado
+	private enum EstadoDoJogo
 	{
 		APLICAR_RODADA,
 		PROCESSAR_RODADA,
@@ -40,7 +40,7 @@ public class SistemaJogo
 	}
 
 	// Variável para segurar o estado atual do jogo.
-	private Estado estadoDoJogo;
+	private EstadoDoJogo estadoDoJogo;
 	// Mantém conta da rodada atual.
 	private int rodada;
 	// Relógio do jogo.
@@ -65,14 +65,14 @@ public class SistemaJogo
 		// Classes do jogo
 		inimigos = new Inimigo[4];
 		protagonista = new Protagonista();
-		janelaUI = new JanelaUI(protagonista);
+		janelaUI = new JanelaUI(protagonista, inimigos);
 
 		// Objetos para desenho
 		batch = jogo.getSpriteBatch();
 		font = jogo.getFont();
 
 		// Variáveis de controle das rodadas.
-		estadoDoJogo = Estado.APLICAR_RODADA;
+		estadoDoJogo = EstadoDoJogo.APLICAR_RODADA;
 		rodada = 0;
 		tempo = 0;
 		
@@ -112,18 +112,18 @@ public class SistemaJogo
 
 	public void Desenhar()
 	{
-		DESENHAR_DEBUG();
-
-
-
-		// Desenhar janela
-		janelaUI.Desenhar(batch, font);
+		// Ordem de desenho importa. Texturas desenhadas primeiras ficam atrás de texturas desenhadas depois.
 
 		// Desenhar inimigos
 		for (Inimigo inimigo : inimigos)
 		{
 			if (inimigo != null) { inimigo.Desenhar(batch, font); }
 		}
+
+		// Desenhar janela
+		janelaUI.Desenhar(batch, font);
+
+		DESENHAR_DEBUG();
 	}
 
 	// --- Métodos para o estado do jogo. -----------------------------------------------------------------------------------------------------------
@@ -134,10 +134,10 @@ public class SistemaJogo
 		rodada++;
 
 		// Preparar janela para mostrar uma mensagem.
-		janelaUI.SetEstadoDaJanela("MENSAGEM");
+		janelaUI.SetEstadoDaJanela(JanelaUI.EstadoDaJanela.MENSAGEM);
 
 		// Iniciar processamento da rodada.
-		estadoDoJogo = Estado.PROCESSAR_RODADA;
+		estadoDoJogo = EstadoDoJogo.PROCESSAR_RODADA;
 		
 		System.out.println("Nova rodada começada"); // DEBUG
 		tempoFaltando1 = 5; // DEBUG
@@ -152,7 +152,7 @@ public class SistemaJogo
 
 		if (tempoFaltando1 < 0)
 		{
-			estadoDoJogo = Estado.APLICAR_JOGADOR;
+			estadoDoJogo = EstadoDoJogo.APLICAR_JOGADOR;
 		}
 		// DEBUG
 	}
@@ -160,10 +160,10 @@ public class SistemaJogo
 	private void AplicarJogador()
 	{
 		// Preparar janela para receber input.
-		janelaUI.SetEstadoDaJanela("INICIO");
+		janelaUI.SetEstadoDaJanela(JanelaUI.EstadoDaJanela.INICIO);
 
 		// Iniciar processamento da vez do jogador.
-		estadoDoJogo = Estado.PROCESSAR_JOGADOR;
+		estadoDoJogo = EstadoDoJogo.PROCESSAR_JOGADOR;
 	}
 
 	private void ProcessarJogador()
@@ -174,17 +174,17 @@ public class SistemaJogo
 		// Se o jogador terminou a rodada, começar vez dos inimigos.
 		if (janelaUI.checarSeRodadaTerminou())
 		{
-			estadoDoJogo = Estado.APLICAR_INIMIGOS;
+			estadoDoJogo = EstadoDoJogo.APLICAR_INIMIGOS;
 		}
 	}
 
 	private void AplicarInimigos()
 	{
 		// Preparar janela para mostrar uma mensagem.
-		janelaUI.SetEstadoDaJanela("MENSAGEM");
+		janelaUI.SetEstadoDaJanela(JanelaUI.EstadoDaJanela.MENSAGEM);
 
 		// Iniciar processamento da vez dos inimigos.
-		estadoDoJogo = Estado.PROCESSAR_INIMIGOS;
+		estadoDoJogo = EstadoDoJogo.PROCESSAR_INIMIGOS;
 
 		tempoFaltando2 = 10; // DEBUG
 	}
@@ -198,7 +198,7 @@ public class SistemaJogo
 
 		if (tempoFaltando2 < 0)
 		{
-			estadoDoJogo = Estado.APLICAR_RODADA;
+			estadoDoJogo = EstadoDoJogo.APLICAR_RODADA;
 		}
 		// DEBUG
 	}
@@ -211,6 +211,7 @@ public class SistemaJogo
 			if (inimigos[i] == null)
 			{
 				inimigos[i] = new Inimigo(i);
+				Inimigo.inimigosAtivos++;
 				break;
 			}
 		}
@@ -230,12 +231,12 @@ public class SistemaJogo
 		{
 			switch (estadoDoJogo)
 			{
-				case APLICAR_RODADA: estadoDoJogo = Estado.PROCESSAR_RODADA; break;
-				case PROCESSAR_RODADA: estadoDoJogo = Estado.APLICAR_JOGADOR; break;
-				case APLICAR_JOGADOR: estadoDoJogo = Estado.PROCESSAR_JOGADOR; break;
-				case PROCESSAR_JOGADOR: estadoDoJogo = Estado.APLICAR_INIMIGOS; break;
-				case APLICAR_INIMIGOS: estadoDoJogo = Estado.PROCESSAR_INIMIGOS; break;
-				case PROCESSAR_INIMIGOS: estadoDoJogo = Estado.APLICAR_RODADA; break;
+				case APLICAR_RODADA: estadoDoJogo = EstadoDoJogo.PROCESSAR_RODADA; break;
+				case PROCESSAR_RODADA: estadoDoJogo = EstadoDoJogo.APLICAR_JOGADOR; break;
+				case APLICAR_JOGADOR: estadoDoJogo = EstadoDoJogo.PROCESSAR_JOGADOR; break;
+				case PROCESSAR_JOGADOR: estadoDoJogo = EstadoDoJogo.APLICAR_INIMIGOS; break;
+				case APLICAR_INIMIGOS: estadoDoJogo = EstadoDoJogo.PROCESSAR_INIMIGOS; break;
+				case PROCESSAR_INIMIGOS: estadoDoJogo = EstadoDoJogo.APLICAR_RODADA; break;
 			}
 		}
 
@@ -255,12 +256,12 @@ public class SistemaJogo
 		font.draw(batch, texto, 10, 590); 				// DEBUG
 		font.draw(batch, "Tempo: " + tempo, 10, 560); 	// DEBUG
 
-		if (estadoDoJogo == Estado.PROCESSAR_RODADA)
+		if (estadoDoJogo == EstadoDoJogo.PROCESSAR_RODADA)
 		{
 			font.setColor(com.badlogic.gdx.graphics.Color.GREEN);
 			font.draw(batch, "Faltando: " + tempoFaltando1, 10, 530); 	// DEBUG
 		}
-		else if (estadoDoJogo == Estado.PROCESSAR_INIMIGOS)
+		else if (estadoDoJogo == EstadoDoJogo.PROCESSAR_INIMIGOS)
 		{
 			font.setColor(com.badlogic.gdx.graphics.Color.RED);
 			font.draw(batch, "Faltando: " + tempoFaltando2, 10, 530); 	// DEBUG
