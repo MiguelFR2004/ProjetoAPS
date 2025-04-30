@@ -21,6 +21,9 @@ public class Inimigo extends Personagem
 		ATACADO;
 	}
 
+	// Quantos inimigos vivos estão no array.
+	static public int inimigosAtivos = 0;
+
 	// Essa variável mantém conta da animação sendo tocada atualmente
 	private Animacao animacaoAtual;
 
@@ -85,7 +88,7 @@ public class Inimigo extends Personagem
 		switch (animacaoAtual)
 		{
 			case NENHUM: temporizadorAnimacao = 1; break;
-			case SPAWN: temporizadorAnimacao = 4; break;
+			case SPAWN: temporizadorAnimacao = 3; break;
 		}
 	}
 
@@ -115,11 +118,20 @@ public class Inimigo extends Personagem
 		font.draw(batch, vidaAtual + " / " + vidaMax, posX, posY - 10);
     }
 
+	// Funções Get
+	public float GetPosX()
+	{
+		return posX;
+	}
+
+	public float GetPosY()
+	{
+		return posY;
+	}
+
 	// Métodos para cada das animações dos inimigos.
 	private void AnimacaoNenhum()
 	{
-		System.out.println(temporizadorAnimacao);
-
 		temporizadorAnimacao = temporizadorAnimacao - Gdx.graphics.getDeltaTime();
 
 		if (temporizadorAnimacao < 0)
